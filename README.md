@@ -1,6 +1,6 @@
-# PGP-(F)
+# Can't see past my shades
 
-Pretty Good Private Fundraising.
+Private Fundraising on Ethereum and beyond.
 
 This application is built on the [Bank of Jubjub private payments protocol](https://bankofjubjub.com).
 
@@ -17,4 +17,4 @@ This application is built on the [Bank of Jubjub private payments protocol](http
 - Users lock their bank of jubjub account to the fundraiser contract
 - Users deposit funds to the fundraiser contract from their bank of jubjub account. The amount sent to the fundraiser is encrypted
 
-![](./gnu_sunglasses.png)
+![](./shades_noun.png)
