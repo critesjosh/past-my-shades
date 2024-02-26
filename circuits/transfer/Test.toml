@@ -1,0 +1,103 @@
+balance_old_me_clear = 1_982
+private_key = "0x0510bae26a9b59ebad67a4324c944b1910a778e8481d7f08ddba6bcd2b94b2c4"
+value = 5
+randomness1 = "0x005fa49918e16a3c3f4d42071a137c8a818964701c63604244ac2746b95e00df"
+randomness2 = "0x005fa49918e16a3c3f4d42071a137c8a818964701c63604244ac2746b95e00df"
+sender_pub_key = [
+  220,
+  159,
+  159,
+  219,
+  116,
+  109,
+  15,
+  7,
+  176,
+  4,
+  204,
+  67,
+  22,
+  227,
+  73,
+  90,
+  88,
+  87,
+  11,
+  144,
+  102,
+  20,
+  153,
+  248,
+  166,
+  166,
+  105,
+  111,
+  244,
+  21,
+  107,
+  170
+]
+recipient_pub_key = [
+  39,
+  19,
+  120,
+  27,
+  138,
+  71,
+  115,
+  124,
+  199,
+  101,
+  216,
+  177,
+  225,
+  52,
+  200,
+  76,
+  108,
+  71,
+  100,
+  232,
+  212,
+  219,
+  252,
+  48,
+  233,
+  58,
+  132,
+  96,
+  111,
+  184,
+  29,
+  157
+]
+sender_pub_key_modulus = "0x193e2a9bcbd4c629cfa843430b874e40e1ae2a3cd69fb2fc3b698cb90b9f9fd9"
+recipient_pub_key_modulus = "0x0bf0cd16bcef5a6c080c0ab163e03e54d42c7c0844ac1413b0cd66ce4b781324"
+process_fee = 2
+relay_fee = 2
+nonce_private = "0x0061a7e2b779f6336db0bdf4d49b6af9ba6f45c724208a3e10a5a6c866b25a5e"
+nonce = "0x0061a7e2b779f6336db0bdf4d49b6af9ba6f45c724208a3e10a5a6c866b25a5e"
+
+[old_balance_encrypted_1]
+x = "0x034ed15cc9c368232e3926503d285e05f1ebed691e83dd928ca96c9ef0ce7368"
+y = "0x0967e26ca6d6476a92fdf6e3417219351a51c337fb0a43fcfedc50f3009c036f"
+
+[old_balance_encrypted_2]
+x = "0x175749dba5c9f812a9e2708f1a47d603724799b52f559c5f5b7202e871a7b89e"
+y = "0x0867712fca7da5946b14502dc8c28321560d680d0137ef9cc48c4473b85f3ffc"
+
+[encrypted_amount_1]
+x = "0x034ed15cc9c368232e3926503d285e05f1ebed691e83dd928ca96c9ef0ce7368"
+y = "0x0967e26ca6d6476a92fdf6e3417219351a51c337fb0a43fcfedc50f3009c036f"
+
+[encrypted_amount_2]
+x = "0x29fd5a9866f46c209b681730bc91a488fead24541223f91f27ed46bb1b3b3979"
+y = "0x07544d15d4229382b5da8357c546edfe0afe6bbe320006b4f1162b2cfaa5fd00"
+
+[new_balance_encrypted_1]
+x = "0x034ed15cc9c368232e3926503d285e05f1ebed691e83dd928ca96c9ef0ce7368"
+y = "0x0967e26ca6d6476a92fdf6e3417219351a51c337fb0a43fcfedc50f3009c036f"
+
+[new_balance_encrypted_2]
+x = "0x2473398fb4545f113eb23f781d6abf53a3c651fc7be10afd48e444fad9511c9b"
+y = "0x0a369072a605a1b96db79afded02f229553da55d8d6af13ac877dcf18ac1824d"

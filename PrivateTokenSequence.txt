@@ -1,0 +1,63 @@
+title Bank of JubJub
+
+actor Alice
+actor Relayer
+actor Processor
+participant Bank of JubJub
+participant ERC20
+participant Escrow
+
+
+==Deposit==
+Alice->Bank of JubJub: deposit
+Bank of JubJub->ERC20: transferFrom(depositAmt)
+ERC20-->Bank of JubJub: depositAmt
+note over Bank of JubJub : Deposit step 1 complete.\nProcess step can be done by\nAlice or a 3rd party
+
+Processor->Bank of JubJub: processDeposit
+Bank of JubJub->Bank of JubJub:updateEncBalance
+Bank of JubJub->ERC20: transfer(processFee)
+ERC20-->Processor: processFee
+note over Bank of JubJub : Alice's deposit complete
+
+==Transfer==
+Alice->Relayer: transferProof
+note over Relayer: receives proof off-chain\nthis can hide tx origin
+Relayer->Bank of JubJub: transfer
+Bank of JubJub->Bank of JubJub: addPendingTransfer
+Bank of JubJub->ERC20:transfer(relayerFee)
+ERC20-->Relayer:relayerFee
+note over Bank of JubJub: step 1 complete
+Processor->Bank of JubJub: processPendingTransfers
+Bank of JubJub->Bank of JubJub: updateEncBalance
+Bank of JubJub->ERC20: transfer(processFee)
+ERC20-->Processor: processFee
+
+==Withdraw==
+Alice->Relayer: withdrawProof
+Relayer->Bank of JubJub: withdraw
+Bank of JubJub->Bank of JubJub: updateEncBalance
+Bank of JubJub->ERC20: transfer(withdrawAmt)
+ERC20-->Alice: withdrawAmt
+Bank of JubJub->ERC20: transfer(relayFee)
+ERC20-->Relayer: relayFee
+
+==Lock==
+Alice->Relayer: lockProof
+Relayer->Bank of JubJub: lock
+Bank of JubJub->Bank of JubJub: lockToEscrow
+Bank of JubJub->ERC20: transfer(relayFee)
+ERC20-->Relayer: relayFee
+
+==Auction==
+
+Alice->Relayer: transferProof
+Relayer->Auction: bid(amt)
+Auction->ERC20: transfer(relayFee)
+ERC20-->Relayer: relayFee
+Relayer->Auction: settle()
+Auction-->Bank of JubJub:transfer(amt)
+Auction-->Bank of JubJub:unlock(Alice)
+Bank of JubJub->Bank of JubJub: updatedEncBalances
+
+

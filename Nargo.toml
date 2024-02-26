@@ -1,0 +1,15 @@
+[workspace]
+members = [
+    "circuits/transfer",
+    "circuits/lock",
+    "circuits/withdraw",
+    "circuits/process_pending_deposits",
+    "circuits/process_pending_transfers",
+    "circuits/add_eth_signer",
+    "circuits/extensions/fundraiser/correct_addition",
+    "circuits/extensions/fundraiser/correct_zero",
+    "circuits/extensions/fundraiser/met_threshold",
+    "circuits/extensions/fundraiser/revoke_contribution",
+]
+default-member = "circuits/transfer"
+
