@@ -72,6 +72,12 @@ module.exports = {
       accounts: [process.env.PRIVATE_KEY || "0".repeat(64)],
       saveDeployments: true,
     },
+    baseSepolia: {
+      chainId: 84532,
+      url: "https://sepolia.base.org",
+      accounts: [process.env.PRIVATE_KEY || "0".repeat(64)],
+      saveDeployments: true
+    },
     chaidochain: {
       chainId: 10200,
       url: "https://rpc.chiadochain.net",
