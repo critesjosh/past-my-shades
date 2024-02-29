@@ -23,7 +23,7 @@ contract FundraiserContract {
     // the manager is the account that the bids will be encrypted to
     // users may want to verify that the recipient is the correct account (eg controlled by a multisig)
     mapping(bytes32 manager => Auction[] auctions) auctionsMap;
-    mapping(bytes32 sender => bool isPending) hasPendingContribution;
+    mapping(bytes32 bidder => bool isPending) hasPendingBid;
     uint256 BJJ_PRIME = 21888242871839275222246405745257275088548364400416034343698204186575808495617;
 
     struct Auction {
@@ -47,6 +47,7 @@ contract FundraiserContract {
     }
 
     event PublicBid(bytes32 manager, uint256 index, uint256 value);
+    event PrivateBid(bytes32 manager, uint256 index, bytes32 from);
 
     /**
      * @notice Sets up the contract with all of the other contracts it will use.
@@ -95,7 +96,76 @@ contract FundraiserContract {
 
     function settleAuction() public {}
 
-    function bidPrivate() public {}
+    function bidPrivate(
+        uint256 _auctionIndex,
+        bytes32 _manager,
+        bytes32 _from,
+        uint40 _relayFee, // relay fee is only paid if the bid is successful
+        address _relayFeeRecipient,
+        PrivateToken.EncryptedAmount calldata _bidAmount,
+        PrivateToken.EncryptedAmount calldata _senderNewBalance,
+        bytes memory _proof_transfer
+    ) public {
+        require(privateToken.lockedTo(_from) == address(this), "Not locked to fundraiser");
+        require(hasPendingBid[_from] == false, "Can only bid to 1 at a time");
+        BidLocals memory bidLocals;
+        bidLocals.txNonce = uint256(keccak256(abi.encode(_amountToSend))) % BJJ_PRIME;
+        require(privateToken.nonce(_from, bidLocals.txNonce) == false, "Nonce must be unused");
+        (bidLocals.senderBalanceC1x, bidLocals.senderBalanceC1y, bidLocals.senderBalanceC2x, bidLocals.senderBalanceC2y)
+        = privateToken.balances(_from);
+        bidLocals.senderBalance = PrivateToken.EncryptedAmount({
+            C1x: bidLocals.senderBalanceC1x,
+            C1y: bidLocals.senderBalanceC1y,
+            C2x: bidLocals.senderBalanceC2x,
+            C2y: bidLocals.senderBalanceC2y
+        });
+
+        (
+            bidLocals.receiverBalanceC1x,
+            bidLocals.receiverBalanceC1y,
+            bidLocals.receiverBalanceC2x,
+            bidLocals.receiverBalanceC2y
+        ) = privateToken.balances(_to);
+        bidLocals.receiverBalance = PrivateToken.EncryptedAmount({
+            C1x: bidLocals.receiverBalanceC1x,
+            C1y: bidLocals.receiverBalanceC1y,
+            C2x: bidLocals.receiverBalanceC2x,
+            C2y: bidLocals.receiverBalanceC2y
+        });
+        bidLocals.transferLocals = PrivateToken.TransferLocals({
+            to: _to,
+            from: _from,
+            processFee: 0, // fundraisers are incentivized to pay the process fee if the fundraiser is successful
+            relayFee: _relayFee,
+            txNonce: bidLocals.txNonce,
+            oldBalance: bidLocals.senderBalance,
+            amountToSend: _amountToSend,
+            receiverBalance: bidLocals.receiverBalance,
+            senderNewBalance: _senderNewBalance,
+            proof: _proof_transfer,
+            // the following dont matter
+            lockedByAddress: address(0x0),
+            transferCount: 0,
+            privateToken: PrivateToken(address(0x0))
+        });
+        transferVerify.verifyTransfer(bidLocals.transferLocals);
+        hasPendingBid[_from] = true;
+
+        PrivateBid bid = PrivateBid({
+            to: _to,
+            from: _from,
+            relayFee: _relayFee,
+            relayFeeRecipient: _relayFeeRecipient,
+            bidAmount: _bidAmount,
+            senderNewBalance: _senderNewBalance,
+            proof_transfer: _proof_transfer
+        });
+        uint256 index = auctionsMap[_manager][_auctionIndex].privateBidCount;
+        Auction storage a = auctionsMap[_manager][_auctionIndex];
+        a.privateBids[index] = bid;
+
+        emit PrivateBid(_manager, _auctionIndex, _from);
+    }
 
     function bidPublic(bytes32 manager, uint256 index) external public payable {
         Auction storage auction = auctionsMap[manager][index];
@@ -105,13 +175,26 @@ contract FundraiserContract {
         emit PublicBid(manager, index, msg.value);
     }
 
+    // TODO: implement this
+    function revokePrivateBid() public {}
+
+    // this must be called by the manager
+    // it takes several private bids and compares them, deleting the lower ones
+    function compareAndRemovePrivateBid() public {}
+
+    function processAuction(bytes32 manager, uint256 index) public {
+        Auction storage auction = auctionsMap[manager][index];
+        require(block.timestamp > auction.endTime, "Auction hasn't ended");
+        // create a circuit that takes the highest public bid and the highest private bid
+    }
+
     /**
      * @notice Anyone can call this function to unlock an account from the fundraiser contract.
      * @dev
      * @param _account the account to unlock
      */
     function unlock(bytes32 _account) public {
-        require(!hasPendingContribution[_account], "Has pending contribution");
+        require(!hasPendingBid[_account], "Has pending bid");
         privateToken.unlock(_account);
     }
 }
