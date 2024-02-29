@@ -4,17 +4,16 @@ pragma solidity ^0.8.0;
 
 import "../PrivateToken.sol";
 import "../AccountController.sol";
-import {UltraVerifier as AdditionVerifier} from "../correct_addition/plonk_vk.sol";
 import {UltraVerifier as ZeroVerifier} from "../correct_zero/plonk_vk.sol";
-import {UltraVerifier as OwnerVerifier} from "../check_owner/plonk_vk.sol";
-import {UltraVerifier as VoteVerifier} from "../checl_vote/plonk_vk.sol";
+import {UltraVerifier as VoteVerifier} from "../check_vote/plonk_vk.sol";
+import {UltraVerifier as ProcessVotesVerifier} from "../process_votes/plonk_vk.sol";
 
 contract VotingContract {
     PrivateToken privateToken;
-    AdditionVerifier additionVerifier;
     ZeroVerifier zeroVerifier;
     AccountController accountController;
     VoteVerifier voteVerifier;
+    ProcessVotesVerifier processVotesVerifier;
 
     // the manager is the account that will manage the Vote struct
     mapping(bytes32 manager => Vote[] votes) votesMap;
@@ -38,22 +37,21 @@ contract VotingContract {
      * @notice Sets up the contract with all of the other contracts it will use.
      * @dev
      * @param _privateToken the address of the private token contract
-     * @param _additionVerifier the address of the addition verifier contract
      * @param _zeroVerifier the address of the zero verifier contract
      * @param _accountController the address of the account controller contract
      */
     constructor(
         address _privateToken,
-        address _additionVerifier,
         address _zeroVerifier,
         address _accountController,
-        address _voteVerifier
+        address _voteVerifier,
+        address _processVotesVerifier
     ) {
         privateToken = PrivateToken(_privateToken);
-        additionVerifier = AdditionVerifier(_additionVerifier);
         zeroVerifier = ZeroVerifier(_zeroVerifier);
         accountController = AccountController(_accountController);
         voteVerifier = VoteVerifier(_voteVerifier);
+        processVotesVerifier = ProcessVotesVerifier(_processVotesSVerifier);
     }
 
     function createVote(bytes32 _manager, uint256 _endTime, PrivateToken.EncryptedAmount _encryptedZero, address destContract, bytes memory _calldata) public {
@@ -121,7 +119,7 @@ contract VotingContract {
         nullifiers[nullifier] = true;
     }
 
-    function processVote(bytes32 _manager, uint256 _index, bool yayWins) public {
+    function processVotes(bytes32 _manager, uint256 _index, bool yayWins, bytes memory _proof) public {
         Vote memory v = votesMap[_manager][_index];
         require(v.endTime < block.timestamp, "Vote isn't over");
         // circuit checks that yay or nay votes is greater
@@ -135,6 +133,7 @@ contract VotingContract {
         publicInputs[6] = bytes32(v.nayVotes.C2x);
         publicInputs[7] = bytes32(v.nayVotes.C2y);
         publicInputs[8] = bytes32(yayWins);
+        processVotesVerifier.verify(_proof, publicInputs);
         // TODO: this unbounded loop is currenlty an attack vector. modify
         // could allow users to decrement, but degrades UX
         for(uint256 i=0;i<v.pendingVotes.length;i++){
