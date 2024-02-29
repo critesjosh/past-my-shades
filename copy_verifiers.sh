@@ -13,6 +13,7 @@ LOCATIONS=(
     "revoke_contribution"
     "check_owner"
     "check_vote"
+    "process_votes"
 )
 
 DEST_PATH="packages/hardhat/contracts/"
