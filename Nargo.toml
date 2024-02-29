@@ -11,6 +11,7 @@ members = [
     "circuits/extensions/fundraiser/met_threshold",
     "circuits/extensions/fundraiser/revoke_contribution",
     "circuits/extensions/private_voting/check_owner",
+    "circuits/extensions/private_voting/check_vote",
 ]
 default-member = "circuits/transfer"
 

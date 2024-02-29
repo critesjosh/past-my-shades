@@ -12,6 +12,7 @@ LOCATIONS=(
     "met_threshold"
     "revoke_contribution"
     "check_owner"
+    "check_vote"
 )
 
 DEST_PATH="packages/hardhat/contracts/"
