@@ -26,10 +26,10 @@ contract AuctionContract {
         address collection;
         uint256 tokenId;
         uint256 highPublicBid;
-        // PrivateBid[] privateBids;
-        uint256 privateBidCount;
-        mapping(uint256 => PrivateBid) privateBids;
+        PrivateBid[] privateBids;
     }
+    // uint256 privateBidCount;
+    // mapping(uint256 => PrivateBid) privateBids;
 
     struct PrivateBid {
         bytes32 to;
@@ -55,7 +55,7 @@ contract AuctionContract {
         address _privateToken,
         address _transferVerify,
         address _thresholdVerifier,
-        address _accountController
+        address _accountController,
         address _consolidateBidsVerifier
     ) {
         privateToken = PrivateToken(_privateToken);
@@ -90,13 +90,16 @@ contract AuctionContract {
         require(block.timestamp > auction.endTime, "Auction hasn't ended");
 
         uint256 length = auction.privateBids;
+        // the circuit can only reconcile 4 bids at a time (could optmize)
         if (length > 4) {
             length = 4;
         }
         uint256 lastIndex = auction.privateBids.length - 1;
         PrivateBid[] arrayToCompare = sliceArray(auction.privateBids, lastIndex - length, lastIndex);
         PrivateBid[] replacementArray = sliceArray(auction.privateBids, 0, lastIndex - length);
+        // add the highest bid back to the array in storage, to keep processing, or settle the auction
         replacementArray.push(arrayToCompare[_highIndex]);
+        auctionsMap[_manager][_auctionIndex].privateBids = replacementArray;
 
         bytes32[] publicInputs = new bytes32[](17);
         publicInputs[0] = bytes32(arrayToCompare[0].bidAmount.C1x);
@@ -116,7 +119,7 @@ contract AuctionContract {
         publicInputs[14] = bytes32(arrayToCompare[3].bidAmount.C2x);
         publicInputs[15] = bytes32(arrayToCompare[3].bidAmount.C2y);
         publicInputs[16] = bytes32(_highIndex);
-        
+
         consolidateBidsVerifier.verifyProof(_proof, publicInputs);
     }
 
@@ -124,7 +127,13 @@ contract AuctionContract {
         Auction memory auction = auctionsMap[_manager][_auctionIndex];
         require(block.timestamp > auction.endTime, "Auction hasn't ended");
 
-        require(auction.privateBidCount == 1, "Private bids must be consolidated");
+        require(auction.privateBids.length == 1, "Private bids must be consolidated");
+        bytes32[] publicInputs = new bytes32[](5);
+        publicInput[0] = bytes32(auction.privateBids[0].bidAmount.C1x);
+        publicInput[1] = bytes32(auction.privateBids[0].bidAmount.C1y);
+        publicInput[2] = bytes32(auction.privateBids[0].bidAmount.C2x);
+        publicInput[3] = bytes32(auction.privateBids[0].bidAmount.C2y);
+        publicInput[4] = bytes32(auction.highPublicBid);
 
         // create a circuit that takes the highest public bid and the highest private bid and returns the winner
     }
@@ -206,19 +215,6 @@ contract AuctionContract {
         require(msg.value > auction.highPublicBid, "Bid is too low");
         auction.highPublicBid = msg.value;
         emit PublicBid(manager, index, msg.value);
-    }
-
-    // TODO: implement this
-    function revokePrivateBid() public {}
-
-    // this must be called by the manager
-    // it takes several private bids and compares them, deleting the lower ones
-    function compareAndRemovePrivateBid() public {}
-
-    function processAuction(bytes32 manager, uint256 index) public {
-        Auction storage auction = auctionsMap[manager][index];
-        require(block.timestamp > auction.endTime, "Auction hasn't ended");
-        // create a circuit that takes the highest public bid and the highest private bid
     }
 
     /**
