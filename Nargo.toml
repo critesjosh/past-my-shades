@@ -13,6 +13,9 @@ members = [
     "circuits/extensions/private_voting/check_owner",
     "circuits/extensions/private_voting/check_vote",
     "circuits/extensions/private_voting/process_votes",
+    "circuits/extensions/auction/consolidate_bids",
+    "circuits/extensions/auction/private_bid_greater",
+
 ]
 default-member = "circuits/transfer"
 

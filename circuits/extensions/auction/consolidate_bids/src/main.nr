@@ -5,7 +5,7 @@ use dep::bjj;
 
 fn main(
     private_key: Field,
-    bids: [u40; 2],
+    bids: [u40; 4],
     bid_1_pub: pub [Gaffine; 2],
     bid_2_pub: pub [Gaffine; 2],
     bid_3_pub: pub [Gaffine; 2],

@@ -14,6 +14,8 @@ LOCATIONS=(
     "check_owner"
     "check_vote"
     "process_votes"
+    "private_bid_greater"
+    "consolidate_bids"
 )
 
 DEST_PATH="packages/hardhat/contracts/"
