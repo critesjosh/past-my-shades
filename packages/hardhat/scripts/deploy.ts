@@ -83,12 +83,13 @@ export async function deployContracts(isTest: boolean = false) {
       isTest
     );
 
-    const decimals = await publicClient.readContract({
-      abi: token.abi,
-      // @ts-ignore
-      address: token.address,
-      functionName: 'decimals'
-    })
+    // const decimals = await publicClient.readContract({
+    //   abi: token.abi,
+    //   // @ts-ignore
+    //   address: token.address,
+    //   functionName: 'decimals'
+    // })
+    const decimals = 18;
 
     const privateToken = await deployAndSave(
       "PrivateToken",
@@ -105,6 +106,90 @@ export async function deployContracts(isTest: boolean = false) {
       isTest
     );
 
+    /*
+    
+    Fundraiser deployments
+    
+    */
+
+    const additionVerifier = await deployAndSave(
+      "contracts/correct_addition/plonk_vk.sol:UltraVerifier",
+      [],
+      isTest
+    )
+
+    const thresholdVerifier = await deployAndSave(
+      "contracts/met_threshold/plonk_vk.sol:UltraVerifier",
+      [], isTest
+    )
+
+    const zeroVerifier = await deployAndSave(
+      "contracts/correct_zero/plonk_vk.sol:UltraVerifier",
+      [], isTest
+    )
+
+    const revokeVerifier = await deployAndSave(
+      "contracts/revoke_contribution/plonk_vk.sol:UltraVerifier",
+      [], isTest
+    )
+
+    const fundraiser = await deployAndSave(
+      "Fundraiser",
+      [
+        privateToken.address,
+        transferVerifier.address,
+        additionVerifier.address,
+        thresholdVerifier.address,
+        zeroVerifier.address,
+        accountController.address,
+        revokeVerifier.address
+      ],
+      isTest
+    )
+
+    /*
+    
+      Auction deployments
+
+    */
+
+    const bidConsolidationVerifier = await deployAndSave(
+      "contracts/consolidate_bids/plonk_vk.sol:UltraVerifier",
+      [], isTest
+    )
+
+    const auctionSettlementVerifier = await deployAndSave(
+      "contracts/private_bid_greater/plonk_vk.sol:UltraVerifier",
+      [], isTest
+    )
+
+    const ownerVerifier = await deployAndSave(
+      "contracts/check_owner/plonk_vk.sol:UltraVerifier",
+      [], isTest
+    )
+
+    const auction = await deployAndSave(
+      "Auction",
+      [
+        privateToken.address,
+        transferVerifier.address,
+        accountController.address,
+        bidConsolidationVerifier.address,
+        auctionSettlementVerifier.address,
+        ownerVerifier.address
+      ]
+    )
+
+    /*
+
+      Voting deployments
+
+    */
+
+
+
+
+
     console.log(
       "Deployment succeeded. Private token contract at: ",
       privateToken.address
@@ -112,7 +197,8 @@ export async function deployContracts(isTest: boolean = false) {
     return {
       privateToken,
       token,
-      accountController
+      accountController,
+      fundraiser
     };
   } catch (e) {
     console.log(e);
@@ -184,3 +270,5 @@ async function deployAndSave(
 
   return await hre.viem.getContractAt(name, receipt.contractAddress!);
 }
+
+deployContracts(true);
