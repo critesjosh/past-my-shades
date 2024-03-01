@@ -5,20 +5,14 @@ pragma solidity ^0.8.0;
 import "../PrivateToken.sol";
 import "../TransferVerify.sol";
 import "../AccountController.sol";
-import {UltraVerifier as AdditionVerifier} from "../correct_addition/plonk_vk.sol";
-import {UltraVerifier as ThresholdVerifier} from "../met_threshold/plonk_vk.sol";
-import {UltraVerifier as ZeroVerifier} from "../correct_zero/plonk_vk.sol";
-import {UltraVerifier as RevokeVerifier} from "../revoke_contribution/plonk_vk.sol";
-import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import "../IERC721.sol";
+import {UltraVerifier as ConsolidateVerifier} from "../consolidate_bids/plonk_vk.sol";
 
-contract FundraiserContract {
+contract AuctionContract {
     PrivateToken privateToken;
     TransferVerify transferVerify;
-    AdditionVerifier additionVerifier;
-    ThresholdVerifier thresholdVerifier;
-    ZeroVerifier zeroVerifier;
-    RevokeVerifier revokeVerifier;
     AccountController accountController;
+    ConsolidateVerifier consolidateBidsVerifier;
 
     // the manager is the account that the bids will be encrypted to
     // users may want to verify that the recipient is the correct account (eg controlled by a multisig)
@@ -32,6 +26,7 @@ contract FundraiserContract {
         address collection;
         uint256 tokenId;
         uint256 highPublicBid;
+        // PrivateBid[] privateBids;
         uint256 privateBidCount;
         mapping(uint256 => PrivateBid) privateBids;
     }
@@ -47,31 +42,26 @@ contract FundraiserContract {
     }
 
     event PublicBid(bytes32 manager, uint256 index, uint256 value);
-    event PrivateBid(bytes32 manager, uint256 index, bytes32 from);
+    event PrivateBidEmitted(bytes32 manager, uint256 index, bytes32 from);
 
     /**
      * @notice Sets up the contract with all of the other contracts it will use.
      * @dev
      * @param _privateToken the address of the private token contract
      * @param _transferVerify the address of the transfer verify contract
-     * @param _additionVerifier the address of the addition verifier contract
-     * @param _thresholdVerifier the address of the threshold verifier contract
-     * @param _zeroVerifier the address of the zero verifier contract
      * @param _accountController the address of the account controller contract
-     * @param _revokeVerifier the address of the revoke verifier contract
      */
     constructor(
         address _privateToken,
         address _transferVerify,
         address _thresholdVerifier,
-        address _zeroVerifier,
         address _accountController
+        address _consolidateBidsVerifier
     ) {
         privateToken = PrivateToken(_privateToken);
         transferVerify = TransferVerify(_transferVerify);
-        thresholdVerifier = ThresholdVerifier(_thresholdVerifier);
-        zeroVerifier = ZeroVerifier(_zeroVerifier);
         accountController = AccountController(_accountController);
+        consolidateBidsVerifier = ConsolidateVerifier(_consolidateBidsVerifier);
     }
 
     function createAuction(
@@ -94,7 +84,50 @@ contract FundraiserContract {
         IERC721(_collection).transferFrom(_owner, address(this), _tokenId);
     }
 
-    function settleAuction() public {}
+    // Auction manager must call this function a number of times, until there is only 1 high bid left
+    function consolidatePrivateBids(bytes32 _manager, uint256 _auctionIndex, uint256 _highIndex, bytes _proof) public {
+        Auction memory auction = auctionsMap[_manager][_auctionIndex];
+        require(block.timestamp > auction.endTime, "Auction hasn't ended");
+
+        uint256 length = auction.privateBids;
+        if (length > 4) {
+            length = 4;
+        }
+        uint256 lastIndex = auction.privateBids.length - 1;
+        PrivateBid[] arrayToCompare = sliceArray(auction.privateBids, lastIndex - length, lastIndex);
+        PrivateBid[] replacementArray = sliceArray(auction.privateBids, 0, lastIndex - length);
+        replacementArray.push(arrayToCompare[_highIndex]);
+
+        bytes32[] publicInputs = new bytes32[](17);
+        publicInputs[0] = bytes32(arrayToCompare[0].bidAmount.C1x);
+        publicInputs[1] = bytes32(arrayToCompare[0].bidAmount.C1y);
+        publicInputs[2] = bytes32(arrayToCompare[0].bidAmount.C2x);
+        publicInputs[3] = bytes32(arrayToCompare[0].bidAmount.C2y);
+        publicInputs[4] = bytes32(arrayToCompare[1].bidAmount.C1x);
+        publicInputs[5] = bytes32(arrayToCompare[1].bidAmount.C1y);
+        publicInputs[6] = bytes32(arrayToCompare[1].bidAmount.C2x);
+        publicInputs[7] = bytes32(arrayToCompare[1].bidAmount.C2y);
+        publicInputs[8] = bytes32(arrayToCompare[2].bidAmount.C1x);
+        publicInputs[9] = bytes32(arrayToCompare[2].bidAmount.C1y);
+        publicInputs[10] = bytes32(arrayToCompare[2].bidAmount.C2x);
+        publicInputs[11] = bytes32(arrayToCompare[2].bidAmount.C2y);
+        publicInputs[12] = bytes32(arrayToCompare[3].bidAmount.C1x);
+        publicInputs[13] = bytes32(arrayToCompare[3].bidAmount.C1y);
+        publicInputs[14] = bytes32(arrayToCompare[3].bidAmount.C2x);
+        publicInputs[15] = bytes32(arrayToCompare[3].bidAmount.C2y);
+        publicInputs[16] = bytes32(_highIndex);
+        
+        consolidateBidsVerifier.verifyProof(_proof, publicInputs);
+    }
+
+    function settleAuction(bytes32 _manager, uint256 _auctionIndex) public {
+        Auction memory auction = auctionsMap[_manager][_auctionIndex];
+        require(block.timestamp > auction.endTime, "Auction hasn't ended");
+
+        require(auction.privateBidCount == 1, "Private bids must be consolidated");
+
+        // create a circuit that takes the highest public bid and the highest private bid and returns the winner
+    }
 
     function bidPrivate(
         uint256 _auctionIndex,
@@ -160,14 +193,14 @@ contract FundraiserContract {
             senderNewBalance: _senderNewBalance,
             proof_transfer: _proof_transfer
         });
-        uint256 index = auctionsMap[_manager][_auctionIndex].privateBidCount;
+        // uint256 index = auctionsMap[_manager][_auctionIndex].privateBidCount;
         Auction storage a = auctionsMap[_manager][_auctionIndex];
-        a.privateBids[index] = bid;
+        a.privateBids.push(bid);
 
         emit PrivateBid(_manager, _auctionIndex, _from);
     }
 
-    function bidPublic(bytes32 manager, uint256 index) external public payable {
+    function bidPublic(bytes32 manager, uint256 index) external payable {
         Auction storage auction = auctionsMap[manager][index];
         require(block.timestamp < auction.endTime, "Auction has ended");
         require(msg.value > auction.highPublicBid, "Bid is too low");
@@ -196,5 +229,16 @@ contract FundraiserContract {
     function unlock(bytes32 _account) public {
         require(!hasPendingBid[_account], "Has pending bid");
         privateToken.unlock(_account);
+    }
+
+    function sliceArray(PrivateBid[] memory array, uint256 start, uint256 end) public pure returns (uint256[] memory) {
+        require(start < end, "Start index must be less than end index.");
+        require(end <= array.length, "End index out of bounds.");
+
+        PrivateBid[] memory slice = new PrivateBid[](end - start);
+        for (uint256 i = 0; i < slice.length; i++) {
+            slice[i] = array[start + i];
+        }
+        return slice;
     }
 }
