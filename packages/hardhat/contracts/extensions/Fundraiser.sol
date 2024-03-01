@@ -10,7 +10,7 @@ import {UltraVerifier as ThresholdVerifier} from "../met_threshold/plonk_vk.sol"
 import {UltraVerifier as ZeroVerifier} from "../correct_zero/plonk_vk.sol";
 import {UltraVerifier as RevokeVerifier} from "../revoke_contribution/plonk_vk.sol";
 
-contract FundraiserContract {
+contract Fundraiser {
     PrivateToken privateToken;
     TransferVerify transferVerify;
     AdditionVerifier additionVerifier;
