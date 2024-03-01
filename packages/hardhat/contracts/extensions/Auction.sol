@@ -7,13 +7,16 @@ import "../TransferVerify.sol";
 import "../AccountController.sol";
 import "../IERC721.sol";
 import {UltraVerifier as ConsolidateVerifier} from "../consolidate_bids/plonk_vk.sol";
+import {UltraVerifier as SettleVerifier} from "../private_bid_greater/plonk_vk.sol";
+import {UltraVerifier as OwnerVerifier} from "../check_owner/plonk_vk.sol";
 
 contract AuctionContract {
     PrivateToken privateToken;
     TransferVerify transferVerify;
     AccountController accountController;
     ConsolidateVerifier consolidateBidsVerifier;
-
+    SettleVerifier settleVerifier;
+    OwnerVerifier ownerVerifier;
     // the manager is the account that the bids will be encrypted to
     // users may want to verify that the recipient is the correct account (eg controlled by a multisig)
     mapping(bytes32 manager => Auction[] auctions) auctionsMap;
@@ -22,17 +25,18 @@ contract AuctionContract {
 
     struct Auction {
         bytes32 recipient;
+        address publicClaimAddress;
         uint256 endTime;
         address collection;
         uint256 tokenId;
         uint256 highPublicBid;
         PrivateBid[] privateBids;
+        bytes32 privateWinner;
     }
     // uint256 privateBidCount;
     // mapping(uint256 => PrivateBid) privateBids;
 
     struct PrivateBid {
-        bytes32 to;
         bytes32 from;
         uint40 relayFee; // this will only be paid by the winner
         address relayFeeRecipient;
@@ -56,12 +60,16 @@ contract AuctionContract {
         address _transferVerify,
         address _thresholdVerifier,
         address _accountController,
-        address _consolidateBidsVerifier
+        address _consolidateBidsVerifier,
+        address _settleVerifier,
+        address _ownerVerifier
     ) {
         privateToken = PrivateToken(_privateToken);
         transferVerify = TransferVerify(_transferVerify);
         accountController = AccountController(_accountController);
         consolidateBidsVerifier = ConsolidateVerifier(_consolidateBidsVerifier);
+        settleVerifier = SettleVerifier(_settleVerifier);
+        ownerVerifier = OwnerVerifier(_ownerVerifier);
     }
 
     function createAuction(
@@ -101,6 +109,10 @@ contract AuctionContract {
         replacementArray.push(arrayToCompare[_highIndex]);
         auctionsMap[_manager][_auctionIndex].privateBids = replacementArray;
 
+        for (uint256 i = 0; i < arrayToCompare.length; i++) {
+            if (i != _highIndex) hasPendingBid[arrayToCompare[i].from] = false;
+        }
+
         bytes32[] publicInputs = new bytes32[](17);
         publicInputs[0] = bytes32(arrayToCompare[0].bidAmount.C1x);
         publicInputs[1] = bytes32(arrayToCompare[0].bidAmount.C1y);
@@ -123,19 +135,55 @@ contract AuctionContract {
         consolidateBidsVerifier.verifyProof(_proof, publicInputs);
     }
 
-    function settleAuction(bytes32 _manager, uint256 _auctionIndex) public {
+    function settleAuction(bytes32 _manager, uint256 _auctionIndex, bool privateBidWins, bytes memory _proof) public {
         Auction memory auction = auctionsMap[_manager][_auctionIndex];
         require(block.timestamp > auction.endTime, "Auction hasn't ended");
 
         require(auction.privateBids.length == 1, "Private bids must be consolidated");
         bytes32[] publicInputs = new bytes32[](5);
-        publicInput[0] = bytes32(auction.privateBids[0].bidAmount.C1x);
-        publicInput[1] = bytes32(auction.privateBids[0].bidAmount.C1y);
-        publicInput[2] = bytes32(auction.privateBids[0].bidAmount.C2x);
-        publicInput[3] = bytes32(auction.privateBids[0].bidAmount.C2y);
-        publicInput[4] = bytes32(auction.highPublicBid);
+        publicInputs[0] = bytes32(auction.privateBids[0].bidAmount.C1x);
+        publicInputs[1] = bytes32(auction.privateBids[0].bidAmount.C1y);
+        publicInputs[2] = bytes32(auction.privateBids[0].bidAmount.C2x);
+        publicInputs[3] = bytes32(auction.privateBids[0].bidAmount.C2y);
+        publicInputs[4] = bytes32(auction.highPublicBid);
+        publicInputs[5] = bytes32(privateBidWins);
+        settleVerifier.verify(_proof, publicInputs);
 
-        // create a circuit that takes the highest public bid and the highest private bid and returns the winner
+        hasPendingBid[auction.privateBids[0].from] = false;
+
+        PrivateBid memory bid = auction.privateBids[0];
+        // settle if private bid wins
+        if (privateBidWins) {
+            privateToken.transfer(
+                auction.recipient, // to
+                bid.from,
+                0, // process fee
+                bid.relayFee, // relay fee
+                address(0), // relay fee recipient
+                bid.amountToSend,
+                bid.senderNewBalance,
+                bid.proof_transfer
+            );
+            auctionsMap[_manager][_auctionIndex].privateWinner = bid.from;
+        } else {
+            auction.publicClaimAddress.transfer(auction.highPublicBid);
+            IERC721(auction.collection).transferFrom(address(this), auction.publicClaimAddress, auction.tokenId);
+        }
+    }
+
+    // this is called after the auction is settled, by someone that can produce a proof that they own the winning bid
+    function claimNft(bytes32 _manager, uint256 _auctionIndex, address _recipient, bytes memory _proof) public {
+        Auction memory auction = auctionsMap[_manager][_auctionIndex];
+        require(auction.privateWinner != bytes32(0x0), "Auction not settled");
+
+        bytes32[] memory publicInputs = new bytes32[](32);
+        for (uint8 i = 0; i < 32; i++) {
+            // Noir takes an array of 32 bytes32 as public inputs
+            bytes1 aByte = bytes1((auction.privateWinner << (i * 8)));
+            publicInputs[i] = bytes32(uint256(uint8(aByte)));
+        }
+        ownerVerifier.verify(_proof, publicInputs);
+        IERC721(auction.collection).transferFrom(address(this), _recipient, auction.tokenId);
     }
 
     function bidPrivate(
@@ -148,6 +196,8 @@ contract AuctionContract {
         PrivateToken.EncryptedAmount calldata _senderNewBalance,
         bytes memory _proof_transfer
     ) public {
+        Auction memory auction = auctionsMap[_manager][_auctionIndex];
+
         require(privateToken.lockedTo(_from) == address(this), "Not locked to fundraiser");
         require(hasPendingBid[_from] == false, "Can only bid to 1 at a time");
         BidLocals memory bidLocals;
@@ -167,7 +217,7 @@ contract AuctionContract {
             bidLocals.receiverBalanceC1y,
             bidLocals.receiverBalanceC2x,
             bidLocals.receiverBalanceC2y
-        ) = privateToken.balances(_to);
+        ) = privateToken.balances(auction.recipient);
         bidLocals.receiverBalance = PrivateToken.EncryptedAmount({
             C1x: bidLocals.receiverBalanceC1x,
             C1y: bidLocals.receiverBalanceC1y,
@@ -175,7 +225,7 @@ contract AuctionContract {
             C2y: bidLocals.receiverBalanceC2y
         });
         bidLocals.transferLocals = PrivateToken.TransferLocals({
-            to: _to,
+            to: auction.recipient,
             from: _from,
             processFee: 0, // fundraisers are incentivized to pay the process fee if the fundraiser is successful
             relayFee: _relayFee,
