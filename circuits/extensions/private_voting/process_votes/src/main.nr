@@ -11,14 +11,11 @@ fn main(
     encrypted_yay_2: pub Gaffine,
     encrypted_nay_1: pub Gaffine,
     encrypted_nay_2: pub Gaffine
-) -> pub bool {
+) -> pub Field {
     utils::assert_correct_clear_balance(private_key, yay_votes, encrypted_yay_1, encrypted_yay_2);
     utils::assert_correct_clear_balance(private_key, nay_votes, encrypted_nay_1, encrypted_nay_2);
 
-    let mut yayWins = true;
-    if (nay_votes > yay_votes) {
-        yayWins = false;
-    }
-    yayWins
+    // return 0 if nay wins, 1 if yay wins
+    if (nay_votes > yay_votes) { 0 } else { 1 }
 }
 
