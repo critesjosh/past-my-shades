@@ -6,13 +6,16 @@ A privacy suite of products built for the EVM.
 - Sealed bid auctions
 - Private voting
 
+Leverages zk-snarks written in [Noir](https://noir-lang.org) and [this nifty El Gamal library](https://github.com/jat9292/noir-elgamal) for homomorphic addition.
+
 This application is built on the [Bank of Jubjub private payments protocol](https://bankofjubjub.com).
 
 ## How it works
 
 - An private app contract is deployed to an EVM blockchain. Users can use any ERC20 token with the bank of jubjub protocol, and by extension, any of these private app contracts.
 - Users lock their bank of jubjub account to the private app contract
-- Users can interact with the private app contract, defined by the logic specified in the specific private app contract
+- Users can interact with the private app contract, defined by the logic specified in the specific private app contract (vote, contribute, bid)
+- Once the vote/contribution/bidding period has ended or the user removed themselves from participation, they can unlock their bank of jubjub account from the private application contract
 
 ## Features
 
@@ -43,6 +46,11 @@ This application is built on the [Bank of Jubjub private payments protocol](http
 - [Auction.sol](./packages/hardhat/contracts/pacs/Auction.sol)
 
 #### Circuits
+
+- [`consolidate_bids`](./circuits/pacs/auction/consolidate_bids/src/main.nr)
+  - used by the auction manager to reduce the list of private bids to the single, highest bid
+- [`private_bid_greater`](./circuits/pacs/auction/private_bid_greater/src/main.nr)
+  - used by the auction manager to indicate whether the top private bid or top public bid is higher without revealing the value of the top private bid
 
 ### Private voting
 
