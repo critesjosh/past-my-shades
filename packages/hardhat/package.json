@@ -36,7 +36,7 @@
     "scratch": "ts-node ./test/scratchpad.ts",
     "test": "NODE_OPTIONS='--experimental-loader ts-node/esm/transpile-only --no-warnings=ExperimentalWarning' hardhat test",
     "script": "NODE_OPTIONS='--experimental-loader ts-node/esm/transpile-only --no-warnings=ExperimentalWarning' hardhat run",
-    "deploy": "NODE_OPTIONS='--experimental-loader ts-node/esm/transpile-only --no-warnings=ExperimentalWarning' hardhat run scripts/deploy.ts"
+    "deploy": "NODE_OPTIONS='--experimental-loader ts-node/esm/transpile-only --no-warnings=ExperimentalWarning' hardhat run scripts/deploy.ts --network sepolia"
   },
   "author": "",
   "license": "ISC",

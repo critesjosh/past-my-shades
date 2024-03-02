@@ -2,6 +2,8 @@ import dotenv from "dotenv";
 dotenv.config({ path: "../.env" });
 import hre from "hardhat";
 import { readDeploymentData } from "./saveDeploy.js";
+import { createPublicClient, getContract, http } from 'viem'
+import { sepolia } from "viem/chains";
 
 const params = {
   account: {
@@ -11,7 +13,14 @@ const params = {
 };
 
 async function main() {
-  const getContractAt = hre.viem.getContractAt
+  const chain = sepolia
+
+  const publicClient = createPublicClient({
+    chain,
+    transport: http()
+  })
+
+  // const getContractAt = hre.viem.getContractAt
   const { data: privateTokenData } = readDeploymentData("PrivateToken");
   const { data: transferVerifyData } = readDeploymentData("TransferVerify");
   const { data: withdrawVerifyData } = readDeploymentData("WithdrawVerify");
@@ -20,18 +29,41 @@ async function main() {
   const { data: processTransferData } = readDeploymentData("contracts/process_pending_transfers/plonk_vk.sol:UltraVerifier");
   const { data: processDepositData } = readDeploymentData("contracts/process_pending_deposits/plonk_vk.sol:UltraVerifier");
 
-  const network = hre.network.name;
+  let privateTokenArtifact = await hre.artifacts.readArtifact("PrivateToken")
+  let privateToken = getContract({
+    abi: privateTokenArtifact.abi,
+    address: privateTokenData[chain.name.toLowerCase()].address,
+    client: publicClient
+  });
 
-  let privateToken = await getContractAt(
-    "PrivateToken",
-    privateTokenData[network].address
-  );
-  const allTransferVerifier = await getContractAt("TransferVerify", transferVerifyData[network].address);
-  const allWithdrawVerifier = await getContractAt("WithdrawVerify", withdrawVerifyData[network].address);
-  const lockVerifier = await getContractAt(
-    "contracts/lock/plonk_vk.sol:UltraVerifier", lockData[network].address
-  );
-  const token = await getContractAt("FunToken", funTokenData[network].address);
+  const allTransferVerifierArtifact = await hre.artifacts.readArtifact("TransferVerify")
+  const allTransferVerifier = getContract({
+    abi: allTransferVerifierArtifact.abi,
+    address: transferVerifyData[chain.name.toLowerCase()].address,
+    client: publicClient
+  });
+
+  const allWithdrawVerifierArtifact = await hre.artifacts.readArtifact("WithdrawVerify")
+  const allWithdrawVerifier = getContract({
+    abi: allWithdrawVerifierArtifact.abi,
+    address: withdrawVerifyData[chain.name.toLowerCase()].address,
+    client: publicClient
+  });
+
+  const lockVerifierArtifact = await hre.artifacts.readArtifact("contracts/lock/plonk_vk.sol:UltraVerifier")
+  const lockVerifier = getContract({
+    abi: lockVerifierArtifact.abi,
+    address: lockData[chain.name.toLowerCase()].address,
+    client: publicClient
+  });
+
+  const tokenArtifact = await hre.artifacts.readArtifact("FunToken")
+  const token = getContract({
+    abi: tokenArtifact.abi,
+    address: funTokenData[chain.name.toLowerCase()].address,
+    client: publicClient
+  });
+
   const processDepositVerifier = await getContractAt(
     "contracts/process_pending_deposits/plonk_vk.sol:UltraVerifier", processDepositData[network].address
   );

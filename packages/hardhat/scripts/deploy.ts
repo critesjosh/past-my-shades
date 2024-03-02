@@ -2,24 +2,25 @@ import hre from "hardhat";
 import dotenv from "dotenv";
 import { readDeploymentData, saveDeploymentData } from "./saveDeploy.js";
 import { delay } from "boj-utils";
-import { hardhat } from "viem/chains";
+import { hardhat, sepolia } from "viem/chains";
 import { createPublicClient, createWalletClient, http } from "viem";
+import { privateKeyToAccount } from 'viem/accounts'
 dotenv.config({ path: "../.env" });
 
-export async function deployContracts(isTest: boolean = false) {
+export async function deployContracts(chain: any, isTest: boolean = false) {
   // const [deployer] = await hre.viem.getWalletClients();
   // const publicClient = await hre.viem.getPublicClient();
 
   // const deployer = await createWalletClient({
-  //   chain: hardhat,
+  //   chain,
   //   transport: http(),
-  //   account: '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266'
+  //   account: privateKeyToAccount(process.env.PRIVATE_KEY as `0x${string}`).address
   // })
 
-  const publicClient = createPublicClient({
-    chain: hardhat,
-    transport: http()
-  })
+  // const publicClient = createPublicClient({
+  //   chain: chain,
+  //   transport: http()
+  // })
 
   // console.log(
   //   "Deploying contracts with the account:",
@@ -27,59 +28,59 @@ export async function deployContracts(isTest: boolean = false) {
   // );
 
   try {
-    const token = await deployAndSave("FunToken", [], isTest);
+    const token = await deployAndSave("FunToken", [], chain, isTest);
 
     const pendingDepositVerifier = await deployAndSave(
       "contracts/process_pending_deposits/plonk_vk.sol:UltraVerifier",
-      [],
+      [], chain,
       isTest
     );
 
     const pendingTransferVerifier = await deployAndSave(
       "contracts/process_pending_transfers/plonk_vk.sol:UltraVerifier",
-      [],
+      [], chain,
       isTest
     );
 
     const transferVerifier = await deployAndSave(
       "contracts/transfer/plonk_vk.sol:UltraVerifier",
-      [],
+      [], chain,
       isTest
     );
 
     const withdrawVerifier = await deployAndSave(
       "contracts/withdraw/plonk_vk.sol:UltraVerifier",
-      [],
+      [], chain,
       isTest
     );
 
     const lockVerifier = await deployAndSave(
       "contracts/lock/plonk_vk.sol:UltraVerifier",
-      [],
+      [], chain,
       isTest
     );
 
     const addEthSigners = await deployAndSave(
       "contracts/add_eth_signer/plonk_vk.sol:UltraVerifier",
-      [],
+      [], chain,
       isTest
     );
 
     const accountController = await deployAndSave(
       "AccountController",
-      [addEthSigners.address],
+      [addEthSigners.address], chain,
       isTest
     );
 
     const allTransferVerifier = await deployAndSave(
       "TransferVerify",
-      [transferVerifier.address],
+      [transferVerifier.address], chain,
       isTest
     );
 
     const allWithdrawVerifier = await deployAndSave(
       "WithdrawVerify",
-      [withdrawVerifier.address],
+      [withdrawVerifier.address], chain,
       isTest
     );
 
@@ -102,7 +103,7 @@ export async function deployContracts(isTest: boolean = false) {
         token.address,
         decimals,
         accountController.address
-      ],
+      ], chain,
       isTest
     );
 
@@ -114,23 +115,23 @@ export async function deployContracts(isTest: boolean = false) {
 
     const additionVerifier = await deployAndSave(
       "contracts/correct_addition/plonk_vk.sol:UltraVerifier",
-      [],
+      [], chain,
       isTest
     )
 
     const thresholdVerifier = await deployAndSave(
       "contracts/met_threshold/plonk_vk.sol:UltraVerifier",
-      [], isTest
+      [], chain, isTest
     )
 
     const zeroVerifier = await deployAndSave(
       "contracts/correct_zero/plonk_vk.sol:UltraVerifier",
-      [], isTest
+      [], chain, isTest
     )
 
     const revokeVerifier = await deployAndSave(
       "contracts/revoke_contribution/plonk_vk.sol:UltraVerifier",
-      [], isTest
+      [], chain, isTest
     )
 
     const fundraiser = await deployAndSave(
@@ -143,7 +144,7 @@ export async function deployContracts(isTest: boolean = false) {
         zeroVerifier.address,
         accountController.address,
         revokeVerifier.address
-      ],
+      ], chain,
       isTest
     )
 
@@ -155,17 +156,17 @@ export async function deployContracts(isTest: boolean = false) {
 
     const bidConsolidationVerifier = await deployAndSave(
       "contracts/consolidate_bids/plonk_vk.sol:UltraVerifier",
-      [], isTest
+      [], chain, isTest
     )
 
     const auctionSettlementVerifier = await deployAndSave(
       "contracts/private_bid_greater/plonk_vk.sol:UltraVerifier",
-      [], isTest
+      [], chain, isTest
     )
 
     const ownerVerifier = await deployAndSave(
       "contracts/check_owner/plonk_vk.sol:UltraVerifier",
-      [], isTest
+      [], chain, isTest
     )
 
     const auction = await deployAndSave(
@@ -177,7 +178,7 @@ export async function deployContracts(isTest: boolean = false) {
         bidConsolidationVerifier.address,
         auctionSettlementVerifier.address,
         ownerVerifier.address
-      ]
+      ], chain, isTest
     )
 
     /*
@@ -187,8 +188,26 @@ export async function deployContracts(isTest: boolean = false) {
     */
 
 
+    const voteVerifier = await deployAndSave(
+      "contracts/check_vote/plonk_vk.sol:UltraVerifier",
+      [], chain, isTest
+    )
 
+    const processVoteVerifier = await deployAndSave(
+      "contracts/process_votes/plonk_vk.sol:UltraVerifier",
+      [], chain, isTest
+    )
 
+    const voting = await deployAndSave(
+      "Voting",
+      [
+        privateToken.address,
+        zeroVerifier.address,
+        accountController.address,
+        voteVerifier.address,
+        processVoteVerifier.address
+      ], chain, isTest
+    )
 
     console.log(
       "Deployment succeeded. Private token contract at: ",
@@ -198,7 +217,9 @@ export async function deployContracts(isTest: boolean = false) {
       privateToken,
       token,
       accountController,
-      fundraiser
+      fundraiser,
+      auction,
+      voting
     };
   } catch (e) {
     console.log(e);
@@ -208,19 +229,26 @@ export async function deployContracts(isTest: boolean = false) {
 async function deployAndSave(
   name: string,
   constructorArgs: any[],
+  chain: any,
   isTest: boolean = false
 ) {
-  // const publicClient = await hre.viem.getPublicClient();
-  // const [deployer] = await hre.viem.getWalletClients();
+
+  // let account = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266" as `0x${string}`
+  // if (chain.name !== "Hardhat") {
+  //   let viemAccount = privateKeyToAccount(process.env.PRIVATE_KEY as `0x${string}`)
+  //   account = viemAccount.address
+  // }
+
+  let account = privateKeyToAccount(process.env.PRIVATE_KEY as `0x${string}`)
 
   const deployer = await createWalletClient({
-    chain: hardhat,
+    chain,
     transport: http(),
-    account: '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266'
+    account
   })
 
   const publicClient = createPublicClient({
-    chain: hardhat,
+    chain,
     transport: http()
   })
 
@@ -233,11 +261,13 @@ async function deployAndSave(
 
   let artifact = await hre.artifacts.readArtifact(name);
 
+  let networkName = "sepolia"
+
   // If the saved bytecode matches the current, don't deploy, just return
   if (
     // hre.network.name != "hardhat" &&
-    data[hre.network.name] &&
-    data[hre.network.name].bytecode == artifact.bytecode &&
+    data[networkName] &&
+    data[networkName].bytecode == artifact.bytecode &&
     !isTest
   ) {
     console.log(`${name} contract found, skipping deployment.`);
@@ -246,18 +276,19 @@ async function deployAndSave(
 
   const hash = await deployer.deployContract({
     abi: artifact.abi,
-    account: (await deployer.getAddresses())[0],
+    account,
     args: constructorArgs,
     bytecode: artifact.bytecode as `0x${string}`,
+    chain
   });
+
+  if (!isTest) {
+    await delay(40000);
+  }
 
   const receipt = await publicClient.getTransactionReceipt({ hash });
 
   console.log(`${name} contract deployed`);
-
-  if (!isTest) {
-    await delay(20000);
-  }
 
   saveDeploymentData(contractName, {
     address: receipt.contractAddress as `0x${string}`,
@@ -271,4 +302,4 @@ async function deployAndSave(
   return await hre.viem.getContractAt(name, receipt.contractAddress!);
 }
 
-deployContracts(true);
+deployContracts(sepolia, false);
