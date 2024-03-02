@@ -240,6 +240,10 @@ async function deployAndSave(
   // }
 
   let account = privateKeyToAccount(process.env.PRIVATE_KEY as `0x${string}`)
+  if (chain.name == "Hardhat") {
+    account = privateKeyToAccount("0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80")
+  }
+
 
   const deployer = await createWalletClient({
     chain,
@@ -261,11 +265,10 @@ async function deployAndSave(
 
   let artifact = await hre.artifacts.readArtifact(name);
 
-  let networkName = "sepolia"
-
+  let networkName = chain.name.toLowerCase()
   // If the saved bytecode matches the current, don't deploy, just return
   if (
-    // hre.network.name != "hardhat" &&
+    networkName != "hardhat" &&
     data[networkName] &&
     data[networkName].bytecode == artifact.bytecode &&
     !isTest
@@ -302,4 +305,4 @@ async function deployAndSave(
   return await hre.viem.getContractAt(name, receipt.contractAddress!);
 }
 
-deployContracts(sepolia, false);
+// deployContracts(sepolia, false);

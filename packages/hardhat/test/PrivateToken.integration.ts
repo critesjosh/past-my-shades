@@ -1,6 +1,5 @@
 import { assert, expect } from "chai";
 import { createWalletClient, getContract } from "viem";
-import hre from "hardhat";
 import { EncryptedBalanceArray } from "boj-types";
 import {
   account1,
@@ -24,9 +23,7 @@ import * as bojArtifact from "../artifacts/contracts/PrivateToken.sol/PrivateTok
 import * as tokenArtifact from "../artifacts/contracts/ERC20.sol/FunToken.json"  assert { type: 'json' };
 import { createPublicClient, http } from 'viem'
 import { hardhat } from 'viem/chains'
-import { send } from "process";
 
-// const viem = hre.viem;
 const babyjub = new BabyJubJubUtils();
 let convertedAmount: bigint;
 
@@ -46,7 +43,8 @@ const sender = createWalletClient({
 
 describe("Private Token integration testing", async function () {
   this.beforeAll(async () => {
-    const contracts = await deployContracts(true);
+    const contracts = await deployContracts(hardhat, true);
+
     // @ts-ignore
     privateTokenAddress = contracts!.privateToken.address;
     // @ts-ignore
@@ -217,7 +215,7 @@ describe("Private Token integration testing", async function () {
   it("should do withdrawals", async () => {
     const withdrawAmount = 7;
     const withdrawRelayFee = 3;
-    const withdrawRelayRecipient = "0xdebe940f35737EDb9a9Ad2bB938A955F9b7892e3";
+    const withdrawRelayRecipient = "0x353654e70272693bf8916372B4e7CF3dcCaCdE9F";
     // const publicClient = await hre.viem.getPublicClient();
     // const [sender] = await hre.viem.getWalletClients();
 
@@ -245,7 +243,6 @@ describe("Private Token integration testing", async function () {
     await withdrawCoordinator.generateProof();
     await withdrawCoordinator.sendWithdraw();
 
-    console.log("TODO: finish withdraw test");
 
     const postBalance = await privateToken.read.balances([
       account1.packedPublicKey,
