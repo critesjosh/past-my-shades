@@ -72,4 +72,18 @@ Vote on proposals without revealing how you voted. Votes are encrypted to a vote
   - checks that the initial encrypted 0 value is correct
   - same circuit as used in the fundraiser
 
+## Deployments
+
+### Sepolia
+
+https://sepolia.etherscan.io/address/0x353654e70272693bf8916372b4e7cf3dccacde9f
+
+### Arbitrum Sepolia
+
+https://sepolia.arbiscan.io/address/0x353654e70272693bf8916372b4e7cf3dccacde9f
+
+### Base Sepolia
+
+https://sepolia.basescan.org/address/0x353654e70272693bf8916372b4e7cf3dccacde9f
+
 ![](./shades_noun.png)

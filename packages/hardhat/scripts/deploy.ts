@@ -2,7 +2,7 @@ import hre from "hardhat";
 import dotenv from "dotenv";
 import { readDeploymentData, saveDeploymentData } from "./saveDeploy.js";
 import { delay } from "boj-utils";
-import { hardhat, sepolia } from "viem/chains";
+import { hardhat, sepolia, arbitrumSepolia, baseSepolia } from "viem/chains";
 import { createPublicClient, createWalletClient, http } from "viem";
 import { privateKeyToAccount } from 'viem/accounts'
 dotenv.config({ path: "../.env" });
@@ -305,4 +305,4 @@ async function deployAndSave(
   return await hre.viem.getContractAt(name, receipt.contractAddress!);
 }
 
-// deployContracts(sepolia, false);
+deployContracts(baseSepolia, false);
